@@ -482,6 +482,32 @@ def test_edit_rec():
         assert res == m_ptfc.return_value
 
 
+def test_edit_rec_editor_on_path(tmp_path, monkeypatch):
+    """The editor is found on PATH even when it is a script, like code.cmd on Windows."""
+    import sys
+
+    import buku
+
+    script = tmp_path / "fake_editor.py"
+    script.write_text(
+        "import sys\n"
+        "with open(sys.argv[1], encoding='utf-8') as f:\n"
+        "    content = f.read()\n"
+        "with open(sys.argv[1], 'w', encoding='utf-8') as f:\n"
+        "    f.write(content.replace('https://old.example', 'https://new.example'))\n"
+    )
+    if sys.platform == "win32":
+        (tmp_path / "fake-editor.cmd").write_text('@"{}" "{}" %1\n'.format(sys.executable, script))
+    else:
+        wrapper = tmp_path / "fake-editor"
+        wrapper.write_text('#!/bin/sh\nexec "{}" "{}" "$1"\n'.format(sys.executable, script))
+        wrapper.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path) + os.pathsep + os.environ["PATH"])
+
+    res = buku.edit_rec("fake-editor", "https://old.example", "title", ",tag,", "desc")
+    assert res[0] == "https://new.example"
+
+
 @pytest.mark.parametrize("argv, pipeargs, isatty", list(product(["argv"], [None, []], [True, False])))
 def test_piped_input(argv, pipeargs, isatty):
     """test func."""

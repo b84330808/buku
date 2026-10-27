@@ -5617,6 +5617,8 @@ def edit_rec(editor, url, title_in, tags_in, desc):
             LOGDBG('Edited content written to %s', tmpfile)
 
         cmd = editor.split(' ')
+        # look the editor up on PATH (finds e.g. code.cmd on Windows)
+        cmd[0] = shutil.which(cmd[0]) or cmd[0]
         cmd += (tmpfile,)
         subprocess.call(cmd)
 
